@@ -76,7 +76,7 @@ fun App() {
                             output = AnnotatedString("")
                             exitCode = null
                             val codeExit = runScript(code.text) { line -> output = buildOutput(line, output) {
-                                line, column -> println("Clicked script at line $line, col $column")
+                                line, column -> code = code.withCursorAt(line, column)
                             }}
                             exitCode = codeExit
                             isRunning = false
@@ -179,7 +179,7 @@ fun buildOutput(add: String, output: AnnotatedString, onClick: (line: Int, colum
         //Regex("""at\s+Foo\d+\.<init>\(foo\d+.*\.kts:(\d+)\)"""),
         val regex = Regex(""".*[/\\]\w+\.kts:(\d+):(\d+)""")
 
-        for (line in add.lines()) {
+        for ((index, line) in add.lines().withIndex()) {
             val match = regex.find(line)
 
             if (match != null) {
@@ -217,8 +217,9 @@ fun buildOutput(add: String, output: AnnotatedString, onClick: (line: Int, colum
             } else {
                 append(line)
             }
-            append("\n")
+            if (index < add.lines().size - 1) append("\n")
         }
+
     }
     return res
 }

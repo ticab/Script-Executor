@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
@@ -51,6 +52,10 @@ fun CodeEditor(
     var isFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+    LaunchedEffect(value) {
+        getCursorLineAndColumn(value) { cursorPos = it }
         focusRequester.requestFocus()
     }
 
@@ -173,4 +178,12 @@ private fun getCursorLineAndColumn(value: TextFieldValue, setCursor: (Pair<Int, 
         }
     }
     setCursor(line to column)
+}
+
+fun TextFieldValue.withCursorAt(line: Int, column: Int): TextFieldValue {
+    val lines = this.text.lines()
+    var offset = lines.take(line - 1).sumOf { it.length + 1 } // +1 for newline
+    offset += column - 1
+    offset = offset.coerceIn(0, this.text.length)
+    return this.copy(selection = TextRange(offset))
 }
