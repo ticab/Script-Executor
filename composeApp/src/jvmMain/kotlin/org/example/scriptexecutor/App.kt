@@ -1,14 +1,7 @@
 package org.example.scriptexecutor
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.onClick
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,28 +9,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 import org.example.scriptexecutor.typography.MyTypography
-import java.io.File
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.channels.Channel
+import org.example.scriptexecutor.editor.CodeEditor
+import org.example.scriptexecutor.editor.moveCursor
+import org.example.scriptexecutor.output.CodeOutput
+import org.example.scriptexecutor.output.formatOutput
 import org.example.scriptexecutor.typography.MyColors
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 @Composable
 fun App() {
@@ -75,9 +58,10 @@ fun App() {
                             isRunning = true
                             output = AnnotatedString("")
                             exitCode = null
-                            val codeExit = runScript(code.text) { line -> output = buildOutput(line, output) {
-                                line, column -> code = code.withCursorAt(line, column)
-                            }}
+                            val codeExit = runScript(code.text) { line -> output = formatOutput(line, output) {
+                                line, column -> code = code.moveCursor(line, column)
+                            }
+                            }
                             exitCode = codeExit
                             isRunning = false
                         }
@@ -160,7 +144,7 @@ fun App() {
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     value = code,
                     onValueChange = {
-                        code = it;
+                        code = it
                     }
                 )
                 CodeOutput(
@@ -170,56 +154,4 @@ fun App() {
             }
         }
     }
-}
-
-fun buildOutput(add: String, output: AnnotatedString, onClick: (line: Int, column: Int) -> Unit): AnnotatedString{
-    val res = buildAnnotatedString {
-        append(output)
-
-        //Regex("""at\s+Foo\d+\.<init>\(foo\d+.*\.kts:(\d+)\)"""),
-        val regex = Regex(""".*[/\\]\w+\.kts:(\d+):(\d+)""")
-
-        for ((index, line) in add.lines().withIndex()) {
-            val match = regex.find(line)
-
-            if (match != null) {
-                val beforeText = line.take(match.range.first)
-                append(beforeText)
-
-                val linkText = "script:${match.groupValues[1]}:${match.groupValues[2]}"
-                val startIndex = length
-
-                withStyle(style = SpanStyle(color = MyColors.Blue, textDecoration = TextDecoration.Underline)) {
-                    append(linkText)
-                }
-                val endIndex = length
-                addLink(
-                    LinkAnnotation.Clickable(
-                        tag = "SCRIPT",
-                        styles = TextLinkStyles(
-                            style = SpanStyle(
-                                color = MyColors.Blue,
-                                textDecoration = TextDecoration.Underline
-                            )
-                        ),
-                        linkInteractionListener = {
-                            val line = match.groupValues[1].toInt()
-                            val column = match.groupValues[2].toInt()
-                            onClick(line, column)
-                        }
-                    ),
-                    start = startIndex,
-                    end = endIndex
-                )
-
-                val afterText = line.substring(match.range.last + 1)
-                append(afterText)
-            } else {
-                append(line)
-            }
-            if (index < add.lines().size - 1) append("\n")
-        }
-
-    }
-    return res
 }

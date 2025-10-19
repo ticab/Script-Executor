@@ -1,4 +1,4 @@
-package org.example.scriptexecutor
+package org.example.scriptexecutor.output
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
