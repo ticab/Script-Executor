@@ -1,6 +1,8 @@
 package org.example.scriptexecutor.editor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,9 +59,12 @@ fun CodeEditor(
                 .verticalScroll(scrollState)
                 .weight(0.9f)
                 .padding(top = 4.dp)
-                .drawBehind {
-                    drawCurrentLineHighlight(state)
-
+                .drawBehind { drawCurrentLineHighlight(state) }
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    focusRequester.requestFocus()
                 }
         ) {
             Row(

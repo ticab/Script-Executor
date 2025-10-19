@@ -9,11 +9,10 @@ fun formatOutput(add: String, output: AnnotatedString, onClick: (line: Int, colu
     val res = buildAnnotatedString {
         append(output)
 
-        //Regex("""at\s+Foo\d+\.<init>\(foo\d+.*\.kts:(\d+)\)"""),
-        val regex = Regex(""".*[/\\]\w+\.kts:(\d+):(\d+)""")
+        val compileError = Regex(""".*[/\\]\w+\.kts:(\d+):(\d+)""")
 
         for ((index, line) in add.lines().withIndex()) {
-            val match = regex.find(line)
+            val match = compileError.find(line)
 
             if (match != null) {
                 val beforeText = line.take(match.range.first)
@@ -47,7 +46,8 @@ fun formatOutput(add: String, output: AnnotatedString, onClick: (line: Int, colu
 
                 val afterText = line.substring(match.range.last + 1)
                 append(afterText)
-            } else {
+            }
+            else{
                 append(line)
             }
             if (index < add.lines().size - 1) append("\n")
