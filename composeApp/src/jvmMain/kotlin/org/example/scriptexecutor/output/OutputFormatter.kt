@@ -50,7 +50,7 @@ fun formatOutput(add: String, output: AnnotatedString, onClick: (line: Int, colu
                 append(afterText)
             }
             else if (runtimeError != null) {
-                append("at script.<init>(")
+                append(" at script.<init>(")
                 var linkText = "script.kts:${runtimeError.groupValues[2]}"
 
                 val startIndex = length

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -59,8 +60,10 @@ fun CodeEditor(
                 .verticalScroll(scrollState)
                 .weight(0.9f)
                 .padding(top = 4.dp)
-                .drawBehind { drawCurrentLineHighlight(state) }
-                .clickable(
+                .drawBehind {
+                    drawCurrentLineHighlight(state)
+
+                }.clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ) {
@@ -87,7 +90,6 @@ fun CodeEditor(
                     thickness = 1.dp,
                     modifier = Modifier.fillMaxHeight()
                 )
-
                 BasicTextField(
                     value = value,
                     onValueChange = { newCode ->
@@ -102,21 +104,44 @@ fun CodeEditor(
                         .focusRequester(focusRequester)
                         .onFocusChanged { state.isFocused = it.isFocused }
                         .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && event.key == Key.Tab) {
+                            if (event.type == KeyEventType.KeyDown) {
                                 val cursor = value.selection.start
-                                val newText = StringBuilder(value.text).apply {
-                                    insert(cursor, "    ") // Insert 4 spaces
-                                }.toString()
 
-                                val newValue = value.copy(
-                                    text = newText,
-                                    selection = TextRange(cursor + 4)
-                                )
-                                onValueChange(newValue)
-                                true
-                            } else {
-                                false
-                            }
+                                when (event.key) {
+                                    Key.Tab -> {
+                                        val newText = StringBuilder(value.text).apply {
+                                            insert(cursor, "    ") // Insert 4 spaces
+                                        }.toString()
+                                        val newValue = value.copy(
+                                            text = newText,
+                                            selection = TextRange(cursor + 4)
+                                        )
+                                        onValueChange(newValue)
+                                        true
+                                    }
+
+                                    Key.Enter -> {
+                                        val textBeforeCursor = value.text.substring(0, cursor)
+                                        val lastLineBreak = textBeforeCursor.lastIndexOf('\n')
+                                        val currentLineStart = if (lastLineBreak == -1) 0 else lastLineBreak + 1
+                                        val currentLine = textBeforeCursor.substring(currentLineStart)
+
+                                        val leadingWhitespace = currentLine.takeWhile { it == ' ' || it == '\t' }
+
+                                        val newText = StringBuilder(value.text).apply {
+                                            insert(cursor, "\n$leadingWhitespace")
+                                        }.toString()
+                                        val newValue = value.copy(
+                                            text = newText,
+                                            selection = TextRange(cursor + 1 + leadingWhitespace.length)
+                                        )
+                                        onValueChange(newValue)
+                                        true
+                                    }
+
+                                    else -> false
+                                }
+                            } else false
                         },
                     visualTransformation = {
                         TransformedText(
