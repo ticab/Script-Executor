@@ -1,6 +1,7 @@
 package org.example.scriptexecutor.output
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import org.example.scriptexecutor.typography.MyColors
 import org.example.scriptexecutor.typography.MyTypography
@@ -26,7 +28,8 @@ import java.awt.datatransfer.StringSelection
 @Composable
 fun CodeOutput(
     output: AnnotatedString,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cleanOutput: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -41,9 +44,19 @@ fun CodeOutput(
         }
         Row(
             modifier = Modifier.weight(0.1f),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Spacer(Modifier.weight(1f))
+
+            Button(
+                onClick = cleanOutput,
+                enabled = output.isNotEmpty(),
+                shape = RoundedCornerShape(5.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MyColors.Blue)
+            ) {
+                Text("Clean", style = MyTypography.Body)
+            }
 
             Button(
                 onClick = {
@@ -54,7 +67,7 @@ fun CodeOutput(
                 shape = RoundedCornerShape(5.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MyColors.Blue)
             ) {
-                Text("Copy output", style = MyTypography.Body)
+                Text("Copy", style = MyTypography.Body)
             }
         }
     }

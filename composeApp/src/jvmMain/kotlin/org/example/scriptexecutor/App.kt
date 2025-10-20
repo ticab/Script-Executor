@@ -59,7 +59,7 @@ fun App() {
                             output = AnnotatedString("")
                             exitCode = null
                             val codeExit = runScript(code.text) { line -> output = formatOutput(line, output) {
-                                line, column -> code = code.moveCursor(line, column)
+                                    line, column -> code = code.moveCursor(line, column)
                             }
                             }
                             exitCode = codeExit
@@ -149,7 +149,10 @@ fun App() {
                 )
                 CodeOutput(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                    output = output
+                    output = output,
+                    cleanOutput = {
+                        output = buildAnnotatedString { }
+                    }
                 )
             }
         }
