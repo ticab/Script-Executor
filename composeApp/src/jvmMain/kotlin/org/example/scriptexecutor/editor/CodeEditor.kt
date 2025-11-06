@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -31,7 +29,6 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import org.example.scriptexecutor.typography.MyColors
 import org.example.scriptexecutor.typography.MyTypography
 
@@ -44,6 +41,7 @@ fun CodeEditor(
     val focusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
     val state = rememberCodeEditorState(value)
+    val tabSpace = "    "
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -62,7 +60,7 @@ fun CodeEditor(
                 .padding(top = 4.dp)
                 .drawBehind {
                     drawCurrentLineHighlight(state)
-
+                    drawBraceGuides(value.text, state)
                 }.clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -74,7 +72,8 @@ fun CodeEditor(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.width(40.dp).padding(start = 4.dp)
+                    modifier = Modifier.width(40.dp).padding(start = 4.dp),
+                    horizontalAlignment = Alignment.End
                 ) {
                     val lines = value.toString().lines()
                     for (i in lines.indices) {
@@ -85,11 +84,6 @@ fun CodeEditor(
                     }
                 }
 
-                VerticalDivider(
-                    color = Color.Gray,
-                    thickness = 1.dp,
-                    modifier = Modifier.fillMaxHeight()
-                )
                 BasicTextField(
                     value = value,
                     onValueChange = { newCode ->
@@ -98,6 +92,7 @@ fun CodeEditor(
                     },
                     textStyle = MyTypography.Code,
                     cursorBrush = SolidColor(Color.White),
+                    onTextLayout = { state.textLayoutResult = it},
                     modifier = Modifier
                         .weight(1f)
                         .padding(start = 5.dp)
@@ -106,11 +101,12 @@ fun CodeEditor(
                         .onPreviewKeyEvent { event ->
                             if (event.type == KeyEventType.KeyDown) {
                                 val cursor = value.selection.start
+                                val text = value.text
 
                                 when (event.key) {
                                     Key.Tab -> {
-                                        val newText = StringBuilder(value.text).apply {
-                                            insert(cursor, "    ") // Insert 4 spaces
+                                        val newText = StringBuilder(text).apply {
+                                            insert(cursor, tabSpace)
                                         }.toString()
                                         val newValue = value.copy(
                                             text = newText,
@@ -123,21 +119,67 @@ fun CodeEditor(
                                     Key.Enter -> {
                                         val textBeforeCursor = value.text.substring(0, cursor)
                                         val lastLineBreak = textBeforeCursor.lastIndexOf('\n')
+                                        val textAfterCursor = text.substring(cursor)
                                         val currentLineStart = if (lastLineBreak == -1) 0 else lastLineBreak + 1
                                         val currentLine = textBeforeCursor.substring(currentLineStart)
 
                                         val leadingWhitespace = currentLine.takeWhile { it == ' ' || it == '\t' }
 
-                                        val newText = StringBuilder(value.text).apply {
-                                            insert(cursor, "\n$leadingWhitespace")
-                                        }.toString()
-                                        val newValue = value.copy(
-                                            text = newText,
-                                            selection = TextRange(cursor + 1 + leadingWhitespace.length)
-                                        )
-                                        onValueChange(newValue)
-                                        true
+                                        val prevChar = textBeforeCursor.lastOrNull()
+
+                                        if (prevChar == '{') {
+                                            val newText = buildString {
+                                                append(textBeforeCursor)
+                                                append("\n$leadingWhitespace    ")
+                                                append("\n$leadingWhitespace}")
+                                                append(textAfterCursor)
+                                            }
+                                            val newCursor = cursor + 1 + leadingWhitespace.length + 4
+                                            val newValue = value.copy(
+                                                text = newText,
+                                                selection = TextRange(newCursor)
+                                            )
+                                            onValueChange(newValue)
+                                            true
+                                        } else {
+                                            val newText = buildString {
+                                                append(textBeforeCursor)
+                                                append("\n$leadingWhitespace")
+                                                append(textAfterCursor)
+                                            }
+                                            val newValue = value.copy(
+                                                text = newText,
+                                                selection = TextRange(cursor + 1 + leadingWhitespace.length)
+                                            )
+                                            onValueChange(newValue)
+                                            true
+                                        }
                                     }
+
+                                    Key.Backspace -> {
+                                        if (cursor >= 4) {
+                                            val before = text.substring(cursor - 4, cursor)
+                                            if (before == tabSpace) {
+                                                val newText = buildString {
+                                                    append(text.substring(0, cursor - 4))
+                                                    append(text.substring(cursor))
+                                                }
+                                                val newValue = value.copy(
+                                                    text = newText,
+                                                    selection = TextRange(cursor - 4)
+                                                )
+                                                onValueChange(newValue)
+                                                true
+                                            }
+                                            else {
+                                                false
+                                            }
+                                        }
+                                        else {
+                                            false
+                                        }
+                                    }
+
 
                                     else -> false
                                 }
@@ -159,7 +201,7 @@ fun CodeEditor(
             Spacer(Modifier.weight(1f))
 
             Text(
-                text = "${state.line}:${state.column}",
+                text = "Line: ${state.line}, Column: ${state.column}",
                 style = MyTypography.BodySmall
             )
         }
@@ -167,12 +209,51 @@ fun CodeEditor(
 }
 
 private fun DrawScope.drawCurrentLineHighlight(state: CodeEditorState) {
-    val lineHeight = 19.sp.toPx()
     if (state.isFocused) {
-        drawRect(
-            color = MyColors.LightGrey.copy(alpha = 0.2f),
-            topLeft = Offset(0f, (state.line - 1) * lineHeight),
-            size = Size(size.width, lineHeight)
-        )
+        state.textLayoutResult?.let { layout ->
+            val line = state.line - 1
+            if (line in 0 until layout.lineCount) {
+                val top = layout.getLineTop(line)
+                val bottom = layout.getLineBottom(line)
+                drawRect(
+                    color = MyColors.LightGrey.copy(alpha = 0.2f),
+                    topLeft = Offset(0f, top),
+                    size = Size(size.width, bottom - top)
+                )
+            }
+        }
     }
 }
+
+private fun DrawScope.drawBraceGuides(code: String, state: CodeEditorState) {
+    val layout = state.textLayoutResult ?: return
+
+    val lineNumberColumnWidth = 40.dp.toPx()
+    val paddingStart = 5.dp.toPx()
+    val charWidth = 11f
+    val tabSize = 4
+    var level = 0
+
+    code.lines().forEachIndexed { i, line ->
+        val top = layout.getLineTop(i)
+        val bottom = layout.getLineBottom(i)
+
+        val closingBraces = line.count { it == '}' }
+        repeat(closingBraces.coerceAtMost(level)) { level-- }
+
+
+        repeat(level) { l ->
+            val x = lineNumberColumnWidth + paddingStart + l * charWidth * tabSize
+            drawLine(
+                color = Color.Gray.copy(alpha = 0.4f),
+                start = Offset(x, top),
+                end = Offset(x, bottom),
+                strokeWidth = 1.2f
+            )
+        }
+
+        val openingBraces = line.count { it == '{' }
+        repeat(openingBraces) { level++ }
+    }
+}
+
