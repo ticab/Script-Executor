@@ -49,8 +49,7 @@ fun CodeEditor(
     val focusRequester = remember { FocusRequester() }
     val scrollState = rememberScrollState()
     val state = rememberCodeEditorState(value)
-    val coroutineScope = rememberCoroutineScope()
-    val tabSpace = "    "
+    val tabSpace = "  "
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -168,7 +167,7 @@ private fun handleKeyEvent(event: KeyEvent, value: TextFieldValue, onValueChange
             }.toString()
             val newValue = value.copy(
                 text = newText,
-                selection = TextRange(cursor + 4)
+                selection = TextRange(cursor + tabSpace.length)
             )
             onValueChange(newValue)
             return true
@@ -181,7 +180,7 @@ private fun handleKeyEvent(event: KeyEvent, value: TextFieldValue, onValueChange
             val currentLineStart = if (lastLineBreak == -1) 0 else lastLineBreak + 1
             val currentLine = textBeforeCursor.substring(currentLineStart)
 
-            val leadingWhitespace = currentLine.takeWhile { it == ' ' || it == '\t' }
+            val leadingWhitespace = currentLine.takeWhile { it == ' '}
 
             val prevChar = textBeforeCursor.lastOrNull()
 
@@ -192,7 +191,7 @@ private fun handleKeyEvent(event: KeyEvent, value: TextFieldValue, onValueChange
                     append("\n$leadingWhitespace}")
                     append(textAfterCursor)
                 }
-                val newCursor = cursor + 1 + leadingWhitespace.length + 4
+                val newCursor = cursor + 1 + leadingWhitespace.length + tabSpace.length
                 val newValue = value.copy(
                     text = newText,
                     selection = TextRange(newCursor)
@@ -215,20 +214,46 @@ private fun handleKeyEvent(event: KeyEvent, value: TextFieldValue, onValueChange
         }
 
         Key.Backspace -> {
-            if (cursor >= 4) {
-                val before = text.substring(cursor - 4, cursor)
-                if (before == tabSpace) {
+            if (cursor == 0) return false
+            val textBeforeCursor = value.text.substring(0, cursor)
+            val lastLineBreak = textBeforeCursor.lastIndexOf('\n')
+            val currentLineStart = if (lastLineBreak == -1) 0 else lastLineBreak + 1
+            val currentLine = textBeforeCursor.substring(currentLineStart)
+            val leadingWhitespace = currentLine.takeWhile { it == ' ' }
+
+            if(lastLineBreak != -1){
+                val prevLineBreak = textBeforeCursor.lastIndexOf('\n', startIndex = lastLineBreak - 1)
+                val prevLineStart = if (prevLineBreak == -1) 0 else prevLineBreak + 1
+                val prevLine = text.substring(prevLineStart, lastLineBreak)
+                val prevLineWhitespace = prevLine.takeWhile { it == ' ' }
+
+                val trailingWhitespace = currentLine.takeLastWhile { it == ' ' }
+                if (trailingWhitespace.isNotEmpty()) {
+                    if(trailingWhitespace.length == currentLine.length && currentLine.length-tabSpace.length <= prevLineWhitespace.length){
+                        val newText = value.copy( text = text, selection = TextRange(lastLineBreak) )
+                        onValueChange(newText)
+                        return true
+                    }
+                    val newCursor =
+                        if (trailingWhitespace.length == currentLine.length) {
+                            cursor - trailingWhitespace.length + prevLineWhitespace.length + tabSpace.length
+                        } else {
+                            cursor - trailingWhitespace.length
+                        }
                     val newText = buildString {
-                        append(text.substring(0, cursor - 4))
+                        append(text.substring(0, newCursor))
                         append(text.substring(cursor))
                     }
-                    val newValue = value.copy(
-                        text = newText,
-                        selection = TextRange(cursor - 4)
-                    )
+                    val newValue = value.copy(text = newText, selection = TextRange(newCursor))
                     onValueChange(newValue)
                     return true
                 }
+
+            }
+            else if(leadingWhitespace.length == currentLine.length){
+                val newValue = value.copy( text = "", selection = TextRange(0) )
+                onValueChange(newValue)
+                return true
             }
         }
     }
@@ -267,7 +292,7 @@ private fun DrawScope.drawBraceGuides(code: String, state: CodeEditorState) {
     val lineNumberColumnWidth = 40.dp.toPx()
     val paddingStart = 5.dp.toPx()
     val charWidth = 11f
-    val tabSize = 4
+    val tabSize = 2
     var level = 0
 
     code.lines().forEachIndexed { i, line ->
