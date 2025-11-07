@@ -1,5 +1,7 @@
 package org.example.scriptexecutor
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -13,6 +15,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
@@ -21,6 +27,7 @@ import org.example.scriptexecutor.editor.moveCursor
 import org.example.scriptexecutor.output.CodeOutput
 import org.example.scriptexecutor.output.formatOutput
 import org.example.scriptexecutor.typography.MyColors
+import java.awt.Cursor
 
 @Composable
 fun App() {
@@ -58,9 +65,10 @@ fun App() {
                             isRunning = true
                             output = AnnotatedString("")
                             exitCode = null
-                            val codeExit = runScript(code.text) { line -> output = formatOutput(line, output) {
-                                    line, column -> code = code.moveCursor(line, column)
-                            }
+                            val codeExit = runScript(code.text) { line ->
+                                output = formatOutput(line, output) { line, column ->
+                                    code = code.moveCursor(line, column)
+                                }
                             }
                             exitCode = codeExit
                             isRunning = false
@@ -105,56 +113,60 @@ fun App() {
                 modifier = Modifier.fillMaxWidth().padding(vertical = 15.dp)
             )
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp)
-            ) {
-                Text(
-                    text = "Code Editor",
-                    style = MyTypography.TitleSmall,
-                    modifier = Modifier.weight(1f)
-                )
+
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val totalWidth = maxWidth
+                val density = LocalDensity.current
+
+                var editorWidth by remember { mutableStateOf(totalWidth / 2) }
+
+                LaunchedEffect(totalWidth) {
+                    editorWidth = totalWidth / 2
+                }
+
                 Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    Text(
-                        text = "Output",
-                        style = MyTypography.TitleSmall
+                    CodeEditor(
+                        modifier = Modifier.width(editorWidth).fillMaxHeight(),
+                        value = code,
+                        onValueChange = {
+                            code = it
+                        }
                     )
 
-                    Spacer(Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .cursorForResize()
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures { _, dragAmount ->
+                                    val dragDp = with(density) { dragAmount.toDp() }
+                                    editorWidth = (editorWidth + dragDp)
+                                        .coerceIn(300.dp, totalWidth - 300.dp)
+                                }
+                            }
+                    )
 
-                    Text(
-                        text =  when {
+                    CodeOutput(
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        output = output,
+                        cleanOutput = {
+                            output = buildAnnotatedString { }
+                        },
+                        stateText = when {
                             isRunning -> "Running"
                             isStopping -> "Stopping"
                             exitCode == null -> "Not started"
                             exitCode == 0 -> "Success"
                             else -> "Exit code: $exitCode"
-                        },
-                        style = MyTypography.BodySmall
+                        }
                     )
                 }
-            }
-            Row(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                CodeEditor(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    value = code,
-                    onValueChange = {
-                        code = it
-                    }
-                )
-                CodeOutput(
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    output = output,
-                    cleanOutput = {
-                        output = buildAnnotatedString { }
-                    }
-                )
             }
         }
     }
 }
+fun Modifier.cursorForResize(): Modifier = this.pointerHoverIcon(PointerIcon(Cursor(Cursor.E_RESIZE_CURSOR)))

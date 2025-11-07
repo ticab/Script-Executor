@@ -29,16 +29,37 @@ import java.awt.datatransfer.StringSelection
 fun CodeOutput(
     output: AnnotatedString,
     modifier: Modifier = Modifier,
-    cleanOutput: () -> Unit
+    cleanOutput: () -> Unit,
+    stateText: String
 ) {
     val scrollState = rememberScrollState()
 
     Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp)
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Output",
+                    style = MyTypography.TitleSmall
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                Text(
+                    text = stateText,
+                    style = MyTypography.BodySmall
+                )
+            }
+        }
         Column(
             modifier = modifier
                 .background(color = MyColors.DarkGrey, shape = RoundedCornerShape(5.dp))
                 .verticalScroll(scrollState)
-                .padding(4.dp).weight(0.9f)
+                .padding(4.dp).weight(1.0f)
         ) {
             BasicText(modifier = Modifier.fillMaxWidth(), text = output, style = MyTypography.Code)
         }

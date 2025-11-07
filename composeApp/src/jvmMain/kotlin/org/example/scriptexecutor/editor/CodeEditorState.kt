@@ -14,6 +14,7 @@ class CodeEditorState(initialValue: TextFieldValue) {
     var column by mutableStateOf(1)
     var isFocused by mutableStateOf(false)
     var textLayoutResult by mutableStateOf<TextLayoutResult?>(null)
+    var isFormatting by mutableStateOf(false)
 
     fun updateCursor(value: TextFieldValue) {
         getCursorLineAndColumn(value) { (l, c) ->

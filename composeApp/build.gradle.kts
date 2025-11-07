@@ -28,6 +28,7 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+            implementation("com.facebook:ktfmt:0.59")
         }
     }
 }
