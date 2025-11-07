@@ -235,14 +235,12 @@ private fun handleKeyEvent(event: KeyEvent, value: TextFieldValue, onValueChange
 
                 val trailingWhitespace = currentLine.takeLastWhile { it == ' ' }
                 if (trailingWhitespace.isNotEmpty()) {
-                    if(trailingWhitespace.length == currentLine.length && currentLine.length-tabSpace.length <= prevLineWhitespace.length){
-                        val newText = value.copy( text = text, selection = TextRange(lastLineBreak) )
-                        onValueChange(newText)
-                        return true
-                    }
                     val newCursor =
                         if (trailingWhitespace.length == currentLine.length) {
-                            cursor - trailingWhitespace.length + prevLineWhitespace.length + tabSpace.length
+                            if(currentLine.length-tabSpace.length <= prevLineWhitespace.length){
+                                lastLineBreak
+                            }
+                            else cursor - trailingWhitespace.length + prevLineWhitespace.length + tabSpace.length
                         } else {
                             cursor - trailingWhitespace.length
                         }
