@@ -76,6 +76,7 @@ fun CodeEditor(
                 .drawBehind {
                     drawCurrentLineHighlight(state)
                     drawBraceGuides(value.text, state)
+                    drawBraceHighlight(value, state)
                 }
                 .clickable(
                     indication = null,
@@ -130,7 +131,12 @@ fun CodeEditor(
                 onClick = {
                     state.isFormatting = true
                     CoroutineScope(Dispatchers.Default).launch {
-                        val newCode = Formatter.format(value.text)
+                        val newCode = try {
+                            Formatter.format(value.text)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            value.text
+                        }
                         withContext(Dispatchers.Main) {
                             onValueChange(value.copy(text = newCode))
                             state.isFormatting = false
@@ -280,7 +286,6 @@ private fun DrawScope.drawCurrentLineHighlight(state: CodeEditorState) {
 private fun DrawScope.drawBraceGuides(code: String, state: CodeEditorState) {
     val layout = state.textLayoutResult ?: return
 
-
     val dividerX = 40.dp.toPx() + 2.dp.toPx()
     drawLine(
         color = Color.DarkGray,
@@ -318,3 +323,17 @@ private fun DrawScope.drawBraceGuides(code: String, state: CodeEditorState) {
     }
 }
 
+private fun DrawScope.drawBraceHighlight(value: TextFieldValue, state: CodeEditorState) {
+    val layout = state.textLayoutResult ?: return
+    val braceIndex = findBraceAtCursor(value.text, value.selection.start) ?: return
+    val matchIndex = findMatchingBrace(value.text, braceIndex) ?: return
+
+    listOf(braceIndex, matchIndex).forEach { index ->
+        val rect = layout.getCursorRect(index)
+        drawRect(
+            color = MyColors.LightGrey,
+            topLeft = Offset(rect.left + 45.dp.toPx(), rect.top),
+            size = Size(11f, rect.height)
+        )
+    }
+}

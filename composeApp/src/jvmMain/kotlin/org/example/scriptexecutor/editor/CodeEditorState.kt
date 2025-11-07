@@ -16,8 +16,11 @@ class CodeEditorState(initialValue: TextFieldValue) {
     var textLayoutResult by mutableStateOf<TextLayoutResult?>(null)
     var isFormatting by mutableStateOf(false)
 
+    private val cursorCache = CursorCache(initialValue.text)
+
     fun updateCursor(value: TextFieldValue) {
-        getCursorLineAndColumn(value) { (l, c) ->
+        cursorCache.updateText(value.text)
+        cursorCache.getLineAndColumn(value.selection.start) { (l, c) ->
             line = l
             column = c
         }
