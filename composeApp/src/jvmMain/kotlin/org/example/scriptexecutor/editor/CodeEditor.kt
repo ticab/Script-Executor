@@ -255,6 +255,15 @@ private fun DrawScope.drawCurrentLineHighlight(state: CodeEditorState) {
 private fun DrawScope.drawBraceGuides(code: String, state: CodeEditorState) {
     val layout = state.textLayoutResult ?: return
 
+
+    val dividerX = 40.dp.toPx() + 2.dp.toPx()
+    drawLine(
+        color = Color.DarkGray,
+        start = Offset(dividerX, 0f),
+        end = Offset(dividerX, size.height),
+        strokeWidth = 1.dp.toPx()
+    )
+
     val lineNumberColumnWidth = 40.dp.toPx()
     val paddingStart = 5.dp.toPx()
     val charWidth = 11f
@@ -269,7 +278,7 @@ private fun DrawScope.drawBraceGuides(code: String, state: CodeEditorState) {
         repeat(closingBraces.coerceAtMost(level)) { level-- }
 
 
-        repeat(level) { l ->
+        for (l in 1 until level) {
             val x = lineNumberColumnWidth + paddingStart + l * charWidth * tabSize
             drawLine(
                 color = Color.Gray.copy(alpha = 0.4f),
