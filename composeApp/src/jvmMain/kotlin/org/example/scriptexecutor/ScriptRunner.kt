@@ -6,8 +6,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -25,6 +27,7 @@ suspend fun runScript(code: String, onOutput: (String) -> Unit): Int = withConte
     val processBuilder = ProcessBuilder("kotlinc", "-script", script.absolutePath)
     processBuilder.redirectErrorStream(true)
     val process = processBuilder.start()
+    currentProcess = process
 
     val reader = BufferedReader(InputStreamReader(process.inputStream, Charsets.UTF_8))
 
@@ -33,29 +36,33 @@ suspend fun runScript(code: String, onOutput: (String) -> Unit): Int = withConte
     val readerJob = launch {
         val buffer = StringBuilder()
         val charBuf = CharArray(512)
+        try {
+            while (isActive) {
+                val readCount = reader.read(charBuf)
+                if (readCount == -1) break
 
-        while (true) {
-            val readCount = reader.read(charBuf)
-            if (readCount == -1) break
+                for (i in 0 until readCount) {
+                    val ch = charBuf[i]
+                    buffer.append(ch)
+                    if (ch == '\n') {
+                        outputChannel.trySend(buffer.toString())
+                        buffer.clear()
+                    }
+                }
 
-            for (i in 0 until readCount) {
-                val ch = charBuf[i]
-                buffer.append(ch)
-                if (ch == '\n') {
+                if (buffer.isNotEmpty()) {
                     outputChannel.trySend(buffer.toString())
                     buffer.clear()
                 }
             }
-
             if (buffer.isNotEmpty()) {
                 outputChannel.trySend(buffer.toString())
-                buffer.clear()
             }
+        } catch(_: Exception) {
+        } finally {
+            reader.close();
+            outputChannel.close();
         }
-        if (buffer.isNotEmpty()) {
-            outputChannel.trySend(buffer.toString())
-        }
-        outputChannel.close()
     }
 
     val uiJob = launch(Dispatchers.Main) {
@@ -68,10 +75,7 @@ suspend fun runScript(code: String, onOutput: (String) -> Unit): Int = withConte
     } catch (e: InterruptedException) {
         130
     } finally {
-        reader.close()
-        outputChannel.close()
-
-        readerJob.cancel()
+        readerJob.cancelAndJoin()
         uiJob.cancel()
         currentProcess = null
     }
@@ -82,8 +86,9 @@ suspend fun stopScript(): Int = withContext(Dispatchers.IO) {
     currentProcess?.let { proc ->
         if (proc.isAlive) {
             proc.destroy()
-            delay(100)
-            if (proc.isAlive) proc.destroyForcibly()
+            if(!proc.waitFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)){
+                proc.destroyForcibly()
+            }
             return@withContext 130
         }
     }

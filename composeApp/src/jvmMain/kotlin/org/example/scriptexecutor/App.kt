@@ -84,12 +84,13 @@ fun App() {
                 Button(
                     onClick = {
                         scope.launch {
+                            if(!isRunning || isStopping) return@launch
                             isRunning = false
                             isStopping = true
                             val stopCode = stopScript()
-                            exitCode = stopCode
 
                             runJob?.cancelAndJoin()
+                            exitCode = stopCode
 
                             output = buildAnnotatedString {
                                 append(output)
